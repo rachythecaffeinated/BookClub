@@ -26,7 +26,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     if (email.isEmpty || !email.contains('@')) return;
 
     await ref.read(authNotifierProvider.notifier).resetPassword(email);
-    setState(() => _sent = true);
+    if (!ref.read(authNotifierProvider).hasError) {
+      setState(() => _sent = true);
+    }
   }
 
   @override
