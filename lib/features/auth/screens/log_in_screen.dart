@@ -33,7 +33,7 @@ class _LogInScreenState extends ConsumerState<LogInScreen> {
           password: _passwordController.text,
         );
 
-    if (mounted) {
+    if (mounted && !ref.read(authNotifierProvider).hasError) {
       context.go('/clubs');
     }
   }

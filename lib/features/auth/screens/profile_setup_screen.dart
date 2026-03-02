@@ -29,7 +29,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           displayName: _nameController.text.trim(),
         );
 
-    if (mounted) {
+    if (mounted && !ref.read(authNotifierProvider).hasError) {
       context.go('/clubs');
     }
   }

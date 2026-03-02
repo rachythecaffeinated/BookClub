@@ -26,7 +26,7 @@ class _JoinClubScreenState extends ConsumerState<JoinClubScreen> {
 
     await ref.read(clubNotifierProvider.notifier).joinClubByCode(code);
 
-    if (mounted) {
+    if (mounted && !ref.read(clubNotifierProvider).hasError) {
       context.go('/clubs');
     }
   }

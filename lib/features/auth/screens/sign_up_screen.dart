@@ -33,7 +33,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
           password: _passwordController.text,
         );
 
-    if (mounted) {
+    if (mounted && !ref.read(authNotifierProvider).hasError) {
       context.goNamed(RouteNames.profileSetup);
     }
   }
