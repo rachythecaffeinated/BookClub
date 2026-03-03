@@ -1,0 +1,9 @@
+// Copy this file to api_constants.dart and fill in your API keys.
+// api_constants.dart is gitignored and will not be committed.
+
+abstract class ApiConstants {
+  static const String googleBooksApiKey = String.fromEnvironment(
+    'GOOGLE_BOOKS_API_KEY',
+    defaultValue: 'YOUR_GOOGLE_BOOKS_API_KEY_HERE',
+  );
+}

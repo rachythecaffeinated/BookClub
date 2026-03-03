@@ -1,0 +1,155 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper functions ───────────────────────────────────────────
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function isClubMember(clubId) {
+      return exists(/databases/$(database)/documents/clubs/$(clubId)/members/$(request.auth.uid))
+        && get(/databases/$(database)/documents/clubs/$(clubId)/members/$(request.auth.uid)).data.status == 'accepted';
+    }
+
+    function isClubAdmin(clubId) {
+      return isClubMember(clubId)
+        && get(/databases/$(database)/documents/clubs/$(clubId)/members/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // ── USERS ──────────────────────────────────────────────────────
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+
+      match /personalBooks/{bookId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /dailyReadingLog/{logId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /readingGoals/{goalId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /goalProgress/{progressId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /progressLog/{logId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId);
+      }
+
+      match /streaks/{streakId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // ── BOOKS (global catalog) ─────────────────────────────────────
+
+    match /books/{bookId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+    }
+
+    // ── INVITES (for invite code lookup by non-members) ────────────
+
+    match /invites/{inviteCode} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+    }
+
+    // ── CLUBS ──────────────────────────────────────────────────────
+
+    match /clubs/{clubId} {
+      allow read: if isClubMember(clubId);
+      allow create: if isAuthenticated()
+        && request.resource.data.created_by == request.auth.uid;
+      allow update: if isClubAdmin(clubId);
+
+      // Members
+      match /members/{memberId} {
+        allow read: if isClubMember(clubId) || memberId == request.auth.uid;
+        allow create: if isAuthenticated();
+        allow update: if memberId == request.auth.uid || isClubAdmin(clubId);
+        allow delete: if memberId == request.auth.uid || isClubAdmin(clubId);
+      }
+
+      // Club book history
+      match /books/{clubBookId} {
+        allow read: if isClubMember(clubId);
+        allow create: if isClubAdmin(clubId);
+      }
+
+      // Reading progress
+      match /progress/{progressId} {
+        allow read: if isClubMember(clubId);
+        allow create: if isAuthenticated()
+          && request.resource.data.user_id == request.auth.uid;
+        allow update: if resource.data.user_id == request.auth.uid;
+      }
+
+      // Chat messages
+      match /messages/{messageId} {
+        allow read: if isClubMember(clubId);
+        allow create: if isClubMember(clubId)
+          && request.resource.data.user_id == request.auth.uid;
+      }
+
+      // Chat read receipts
+      match /readReceipts/{userId} {
+        allow read: if isClubMember(clubId);
+        allow write: if isOwner(userId);
+      }
+
+      // Margin notes (spoiler gating done client-side)
+      match /notes/{noteId} {
+        allow read: if isClubMember(clubId);
+        allow create: if isClubMember(clubId)
+          && request.resource.data.user_id == request.auth.uid;
+        allow delete: if resource.data.user_id == request.auth.uid;
+
+        match /reactions/{reactionId} {
+          allow read: if isClubMember(clubId);
+          allow create: if isClubMember(clubId);
+          allow delete: if resource.data.user_id == request.auth.uid;
+        }
+
+        match /replies/{replyId} {
+          allow read: if isClubMember(clubId);
+          allow create: if isClubMember(clubId);
+          allow delete: if resource.data.user_id == request.auth.uid;
+        }
+      }
+
+      // Meetings
+      match /meetings/{meetingId} {
+        allow read: if isClubMember(clubId);
+        allow create: if isClubAdmin(clubId);
+        allow update: if isClubAdmin(clubId);
+
+        match /rsvps/{userId} {
+          allow read: if isClubMember(clubId);
+          allow write: if isOwner(userId);
+        }
+      }
+
+      // Typing indicators
+      match /typing/{userId} {
+        allow read: if isClubMember(clubId);
+        allow write: if isOwner(userId);
+      }
+    }
+  }
+}

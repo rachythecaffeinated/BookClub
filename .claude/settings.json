@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter run -d 00008140)",
+      "Bash(otool -L /opt/homebrew/opt/git/libexec/git-core/git-remote-https)",
+      "Bash(/opt/homebrew/bin/git ls-remote --refs https://github.com/octocat/Hello-World.git)",
+      "Bash(DYLD_LIBRARY_PATH=/opt/homebrew/opt/curl/lib /opt/homebrew/opt/git/libexec/git-core/git-remote-https)",
+      "Bash(echo \"exit: $?\")"
+    ]
+  }
+}
