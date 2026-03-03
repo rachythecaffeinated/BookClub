@@ -43,6 +43,10 @@ abstract class RouteNames {
   static const String scheduleMeeting = 'schedule-meeting';
   static const String meetingDetail = 'meeting-detail';
 
+  // Book Pick
+  static const String bookPick = 'book-pick';
+  static const String bookPickPropose = 'book-pick-propose';
+
   // Personal library
   static const String addPersonalBook = 'add-personal-book';
   static const String readingGoals = 'reading-goals';

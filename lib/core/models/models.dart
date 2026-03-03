@@ -1,4 +1,7 @@
 export 'book.dart';
+export 'book_pick.dart';
+export 'book_proposal.dart';
+export 'book_rating.dart';
 export 'chat_message.dart';
 export 'club.dart';
 export 'club_meeting.dart';

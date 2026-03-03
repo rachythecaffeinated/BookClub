@@ -50,6 +50,9 @@ class FirebaseService {
           String clubId) =>
       clubs.doc(clubId).collection('meetings');
 
+  static CollectionReference<Map<String, dynamic>> bookPicks(String clubId) =>
+      clubs.doc(clubId).collection('bookPicks');
+
   static CollectionReference<Map<String, dynamic>> clubReadReceipts(
           String clubId) =>
       clubs.doc(clubId).collection('readReceipts');
@@ -71,6 +74,18 @@ class FirebaseService {
   static CollectionReference<Map<String, dynamic>> noteReplies(
           String clubId, String noteId) =>
       clubNotes(clubId).doc(noteId).collection('replies');
+
+  static CollectionReference<Map<String, dynamic>> bookPickProposals(
+          String clubId, String bookPickId) =>
+      bookPicks(clubId).doc(bookPickId).collection('proposals');
+
+  static CollectionReference<Map<String, dynamic>> bookPickRatings(
+          String clubId, String bookPickId) =>
+      bookPicks(clubId).doc(bookPickId).collection('ratings');
+
+  static CollectionReference<Map<String, dynamic>> bookPickParticipants(
+          String clubId, String bookPickId) =>
+      bookPicks(clubId).doc(bookPickId).collection('participants');
 
   // ── User subcollections ────────────────────────────────────────────
 

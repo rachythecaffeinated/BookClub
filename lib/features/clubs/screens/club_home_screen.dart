@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/route_names.dart';
 import '../../../core/models/book.dart';
+import '../../../core/models/book_pick.dart';
 import '../../../core/models/reading_progress.dart';
+import '../../../core/providers/book_pick_provider.dart';
 import '../../../core/providers/club_provider.dart';
 import '../../../core/providers/progress_provider.dart';
 
@@ -123,6 +125,10 @@ class ClubHomeScreen extends ConsumerWidget {
                   ),
                 ),
               ),
+              const SizedBox(height: 16),
+
+              // Book Pick
+              _BookPickCard(clubId: clubId),
               const SizedBox(height: 16),
 
               // Current book & progress
@@ -398,6 +404,146 @@ class _MemberProgressBar extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _BookPickCard extends ConsumerWidget {
+  final String clubId;
+
+  const _BookPickCard({required this.clubId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pickAsync = ref.watch(activeBookPickProvider(clubId));
+    final completedAsync = ref.watch(completedBookPickProvider(clubId));
+    final memberAsync = ref.watch(currentUserMemberProvider(clubId));
+
+    final isAdmin = memberAsync.valueOrNull?.role.name == 'admin';
+
+    return pickAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (activePick) {
+        if (activePick != null) {
+          return _buildCard(
+            context,
+            icon: activePick.isProposing
+                ? Icons.how_to_vote
+                : Icons.star_rate,
+            title: activePick.isProposing
+                ? 'Book Pick: Propose & Vote'
+                : 'Book Pick: Rate Books',
+            subtitle:
+                '${activePick.isProposing ? activePick.participantCount : activePick.ratingCount} of ${activePick.memberCount} members',
+            buttonLabel: 'Participate',
+            onTap: () => context.pushNamed(
+              RouteNames.bookPick,
+              pathParameters: {'clubId': clubId},
+            ),
+          );
+        }
+
+        // Check for completed pick
+        return completedAsync.when(
+          loading: () => const SizedBox.shrink(),
+          error: (_, __) => const SizedBox.shrink(),
+          data: (completed) {
+            if (completed != null && completed.hasTie) {
+              return _buildCard(
+                context,
+                icon: Icons.casino,
+                title: 'Book Pick: Tiebreaker needed!',
+                subtitle:
+                    '${completed.tiedProposalIds?.length ?? 0} books tied',
+                buttonLabel: 'Break the Tie',
+                onTap: () => context.pushNamed(
+                  RouteNames.bookPick,
+                  pathParameters: {'clubId': clubId},
+                ),
+              );
+            }
+
+            if (completed != null && completed.winnerProposalId != null) {
+              return _buildCard(
+                context,
+                icon: Icons.emoji_events,
+                title: 'Next book chosen!',
+                subtitle: completed.winnerTitle ?? 'View results',
+                buttonLabel: 'View Results',
+                onTap: () => context.pushNamed(
+                  RouteNames.bookPick,
+                  pathParameters: {'clubId': clubId},
+                ),
+              );
+            }
+
+            // No active or completed pick — show start button for admin only
+            if (!isAdmin) return const SizedBox.shrink();
+
+            return _buildCard(
+              context,
+              icon: Icons.auto_stories,
+              title: 'Pick your next book',
+              subtitle:
+                  'Let members propose and vote on what to read next',
+              buttonLabel: 'Start Book Pick',
+              onTap: () => context.pushNamed(
+                RouteNames.bookPick,
+                pathParameters: {'clubId': clubId},
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildCard(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required String buttonLabel,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(icon, size: 32, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Colors.grey[600],
+                          ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right),
+            ],
+          ),
+        ),
       ),
     );
   }

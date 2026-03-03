@@ -9,6 +9,8 @@ import '../features/auth/screens/log_in_screen.dart';
 import '../features/auth/screens/profile_setup_screen.dart';
 import '../features/auth/screens/sign_up_screen.dart';
 import '../features/auth/screens/welcome_screen.dart';
+import '../features/book_pick/screens/book_pick_propose_screen.dart';
+import '../features/book_pick/screens/book_pick_screen.dart';
 import '../features/books/screens/book_detail_screen.dart';
 import '../features/books/screens/scan_book_screen.dart';
 import '../features/books/screens/search_book_screen.dart';
@@ -152,6 +154,20 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: 'search-book',
                     name: RouteNames.searchBook,
                     builder: (context, state) => SearchBookScreen(
+                      clubId: state.pathParameters['clubId']!,
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'book-pick',
+                    name: RouteNames.bookPick,
+                    builder: (context, state) => BookPickScreen(
+                      clubId: state.pathParameters['clubId']!,
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'book-pick/propose',
+                    name: RouteNames.bookPickPropose,
+                    builder: (context, state) => BookPickProposeScreen(
                       clubId: state.pathParameters['clubId']!,
                     ),
                   ),
