@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -47,7 +48,8 @@ final clubMembersProvider = FutureProvider.autoDispose
 
   return snapshot.docs
       .map((doc) => ClubMember.fromJson(
-          FirebaseService.docToJson(doc, extra: {'club_id': clubId})))
+            FirebaseService.docToJson(doc, extra: {'club_id': clubId}),
+          ),)
       .toList();
 });
 
@@ -66,6 +68,19 @@ final clubMemberProfilesProvider = FutureProvider.autoDispose
     for (final doc in snapshot.docs)
       doc.id: UserProfile.fromJson(FirebaseService.docToJson(doc)),
   };
+});
+
+/// Provides the current user's ClubMember record for a given club.
+final currentUserMemberProvider = FutureProvider.autoDispose
+    .family<ClubMember?, String>((ref, clubId) async {
+  final userId = FirebaseService.currentUserId;
+  if (userId == null) return null;
+
+  final doc = await FirebaseService.clubMembers(clubId).doc(userId).get();
+  if (!doc.exists) return null;
+  return ClubMember.fromJson(
+    FirebaseService.docToJson(doc, extra: {'club_id': clubId}),
+  );
 });
 
 /// Provides the current book for a club (from the club's books subcollection).
@@ -233,6 +248,56 @@ class ClubNotifier extends StateNotifier<AsyncValue<void>> {
   }) async {
     await FirebaseService.clubBooks(clubId).doc(bookId).update({
       'page_count': pageCount,
+    });
+  }
+
+  /// Upload an image to Firebase Storage and return the download URL.
+  Future<String> _uploadClubImage({
+    required String clubId,
+    required File imageFile,
+    required String folder,
+  }) async {
+    final ext = imageFile.path.split('.').last;
+    final ref = FirebaseService.storage
+        .ref()
+        .child('clubs/$clubId/$folder.$ext');
+    await ref.putFile(imageFile);
+    return ref.getDownloadURL();
+  }
+
+  /// Update the club's avatar image.
+  Future<void> updateClubAvatar({
+    required String clubId,
+    required File imageFile,
+  }) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      final url = await _uploadClubImage(
+        clubId: clubId,
+        imageFile: imageFile,
+        folder: 'avatar',
+      );
+      await FirebaseService.clubs.doc(clubId).update({
+        'avatar_url': url,
+      });
+    });
+  }
+
+  /// Update the club's background image.
+  Future<void> updateClubBackground({
+    required String clubId,
+    required File imageFile,
+  }) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      final url = await _uploadClubImage(
+        clubId: clubId,
+        imageFile: imageFile,
+        folder: 'background',
+      );
+      await FirebaseService.clubs.doc(clubId).update({
+        'background_url': url,
+      });
     });
   }
 

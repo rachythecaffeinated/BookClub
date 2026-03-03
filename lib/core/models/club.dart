@@ -5,6 +5,7 @@ class Club extends Equatable {
   final String name;
   final String? description;
   final String? avatarUrl;
+  final String? backgroundUrl;
   final String? currentBookId;
   final String? inviteCode;
   final String? inviteLinkToken;
@@ -18,6 +19,7 @@ class Club extends Equatable {
     required this.name,
     this.description,
     this.avatarUrl,
+    this.backgroundUrl,
     this.currentBookId,
     this.inviteCode,
     this.inviteLinkToken,
@@ -33,6 +35,7 @@ class Club extends Equatable {
       name: json['name'] as String,
       description: json['description'] as String?,
       avatarUrl: json['avatar_url'] as String?,
+      backgroundUrl: json['background_url'] as String?,
       currentBookId: json['current_book_id'] as String?,
       inviteCode: json['invite_code'] as String?,
       inviteLinkToken: json['invite_link_token'] as String?,
@@ -50,6 +53,7 @@ class Club extends Equatable {
       'name': name,
       'description': description,
       'avatar_url': avatarUrl,
+      'background_url': backgroundUrl,
       'current_book_id': currentBookId,
       'invite_code': inviteCode,
       'member_count': memberCount,
