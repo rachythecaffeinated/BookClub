@@ -8,22 +8,25 @@ class ShellScreen extends StatelessWidget {
 
   int _currentIndex(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
-    if (location.startsWith('/clubs')) return 0;
-    if (location.startsWith('/my-books')) return 1;
-    if (location.startsWith('/stats')) return 2;
-    if (location.startsWith('/profile')) return 3;
+    if (location.startsWith('/home')) return 0;
+    if (location.startsWith('/clubs')) return 1;
+    if (location.startsWith('/my-books')) return 2;
+    if (location.startsWith('/stats')) return 3;
+    if (location.startsWith('/profile')) return 4;
     return 0;
   }
 
   void _onTap(BuildContext context, int index) {
     switch (index) {
       case 0:
-        context.go('/clubs');
+        context.go('/home');
       case 1:
-        context.go('/my-books');
+        context.go('/clubs');
       case 2:
-        context.go('/stats');
+        context.go('/my-books');
       case 3:
+        context.go('/stats');
+      case 4:
         context.go('/profile');
     }
   }
@@ -36,6 +39,10 @@ class ShellScreen extends StatelessWidget {
         currentIndex: _currentIndex(context),
         onTap: (index) => _onTap(context, index),
         items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_rounded),
+            label: 'Home',
+          ),
           BottomNavigationBarItem(
             icon: Icon(Icons.groups),
             label: 'Clubs',

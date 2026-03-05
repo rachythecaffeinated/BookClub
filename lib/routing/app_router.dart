@@ -27,6 +27,7 @@ import '../features/meetings/screens/schedule_meeting_screen.dart';
 import '../features/personal_library/screens/my_books_screen.dart';
 import '../features/personal_library/screens/reading_goals_screen.dart';
 import '../features/personal_library/screens/stats_screen.dart';
+import '../features/home/screens/home_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/progress/screens/update_progress_screen.dart';
 import 'shell_screen.dart';
@@ -43,7 +44,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isProfileSetup = state.matchedLocation == '/profile-setup';
 
       if (!isAuthenticated && !isAuthRoute && !isProfileSetup) return '/';
-      if (isAuthenticated && isAuthRoute) return '/clubs';
+      if (isAuthenticated && isAuthRoute) return '/home';
       return null;
     },
     routes: [
@@ -78,6 +79,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       ShellRoute(
         builder: (context, state, child) => ShellScreen(child: child),
         routes: [
+          GoRoute(
+            path: '/home',
+            name: RouteNames.home,
+            builder: (context, state) => const HomeScreen(),
+          ),
           GoRoute(
             path: '/clubs',
             name: RouteNames.clubs,
