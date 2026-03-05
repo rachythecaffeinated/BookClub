@@ -1,19 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-class ReadingGoalsScreen extends StatefulWidget {
+import '../../../core/providers/reading_goals_provider.dart';
+
+class ReadingGoalsScreen extends ConsumerStatefulWidget {
   const ReadingGoalsScreen({super.key});
 
   @override
-  State<ReadingGoalsScreen> createState() => _ReadingGoalsScreenState();
+  ConsumerState<ReadingGoalsScreen> createState() => _ReadingGoalsScreenState();
 }
 
-class _ReadingGoalsScreenState extends State<ReadingGoalsScreen> {
+class _ReadingGoalsScreenState extends ConsumerState<ReadingGoalsScreen> {
   bool _weeklyEnabled = false;
   bool _monthlyEnabled = false;
   bool _yearlyEnabled = false;
   final _weeklyController = TextEditingController();
   final _monthlyController = TextEditingController();
   final _yearlyController = TextEditingController();
+  bool _loaded = false;
+  bool _saving = false;
 
   @override
   void dispose() {
@@ -23,8 +29,58 @@ class _ReadingGoalsScreenState extends State<ReadingGoalsScreen> {
     super.dispose();
   }
 
+  void _loadExistingGoals() {
+    if (_loaded) return;
+    final goalsAsync = ref.read(readingGoalsProvider);
+    goalsAsync.whenData((goals) {
+      for (final goal in goals) {
+        if (!goal.isActive) continue;
+        switch (goal.goalPeriod.name) {
+          case 'weekly':
+            _weeklyEnabled = true;
+            _weeklyController.text = goal.targetValue.toString();
+          case 'monthly':
+            _monthlyEnabled = true;
+            _monthlyController.text = goal.targetValue.toString();
+          case 'yearly':
+            _yearlyEnabled = true;
+            _yearlyController.text = goal.targetValue.toString();
+        }
+      }
+      _loaded = true;
+      if (mounted) setState(() {});
+    });
+  }
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+
+    await ref.read(readingGoalsNotifierProvider.notifier).saveGoals(
+          weeklyEnabled: _weeklyEnabled,
+          weeklyTarget: int.tryParse(_weeklyController.text.trim()),
+          monthlyEnabled: _monthlyEnabled,
+          monthlyTarget: int.tryParse(_monthlyController.text.trim()),
+          yearlyEnabled: _yearlyEnabled,
+          yearlyTarget: int.tryParse(_yearlyController.text.trim()),
+        );
+
+    ref.invalidate(readingGoalsProvider);
+
+    if (mounted) {
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Goals saved!')),
+      );
+      context.pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Trigger load of existing goals.
+    ref.watch(readingGoalsProvider);
+    _loadExistingGoals();
+
     return Scaffold(
       appBar: AppBar(title: const Text('Reading Goals')),
       body: ListView(
@@ -67,10 +123,14 @@ class _ReadingGoalsScreenState extends State<ReadingGoalsScreen> {
           const SizedBox(height: 32),
 
           ElevatedButton(
-            onPressed: () {
-              // TODO: Save goals to Firestore
-            },
-            child: const Text('Save Goals'),
+            onPressed: _saving ? null : _save,
+            child: _saving
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Save Goals'),
           ),
         ],
       ),

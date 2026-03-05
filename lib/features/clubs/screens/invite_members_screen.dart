@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../core/providers/club_provider.dart';
 
@@ -85,7 +86,11 @@ class InviteMembersScreen extends ConsumerWidget {
                             width: double.infinity,
                             child: OutlinedButton.icon(
                               onPressed: () {
-                                // TODO: Share via system share sheet
+                                if (club.inviteCode != null) {
+                                  Share.share(
+                                    'Join my book club on BookClub! Use invite code: ${club.inviteCode}',
+                                  );
+                                }
                               },
                               icon: const Icon(Icons.share),
                               label: const Text('Share Invite Link'),

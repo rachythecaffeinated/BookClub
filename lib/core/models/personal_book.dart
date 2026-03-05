@@ -8,7 +8,11 @@ class PersonalBook extends Equatable {
   final String id;
   final String userId;
   final String bookId;
+  final String? title;
+  final String? author;
+  final String? coverUrl;
   final Shelf shelf;
+  final bool isOwned;
   final PersonalReadingFormat? readingFormat;
   final String? formatTotal;
   final String? customEndpoint;
@@ -24,7 +28,11 @@ class PersonalBook extends Equatable {
     required this.id,
     required this.userId,
     required this.bookId,
+    this.title,
+    this.author,
+    this.coverUrl,
     this.shelf = Shelf.reading,
+    this.isOwned = false,
     this.readingFormat,
     this.formatTotal,
     this.customEndpoint,
@@ -42,7 +50,11 @@ class PersonalBook extends Equatable {
       id: json['id'] as String,
       userId: json['user_id'] as String,
       bookId: json['book_id'] as String,
+      title: json['title'] as String?,
+      author: json['author'] as String?,
+      coverUrl: json['cover_url'] as String?,
       shelf: _parseShelf(json['shelf'] as String),
+      isOwned: json['is_owned'] as bool? ?? false,
       readingFormat: _parseFormat(json['reading_format'] as String?),
       formatTotal: json['format_total'] as String?,
       customEndpoint: json['custom_endpoint'] as String?,
@@ -64,7 +76,11 @@ class PersonalBook extends Equatable {
     return {
       'user_id': userId,
       'book_id': bookId,
+      'title': title,
+      'author': author,
+      'cover_url': coverUrl,
       'shelf': _shelfToString(shelf),
+      'is_owned': isOwned,
       'reading_format': _formatToString(readingFormat),
       'format_total': formatTotal,
       'custom_endpoint': customEndpoint,
@@ -124,5 +140,5 @@ class PersonalBook extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, userId, bookId, shelf, percentComplete];
+  List<Object?> get props => [id, userId, bookId, shelf, isOwned, percentComplete];
 }

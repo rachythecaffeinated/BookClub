@@ -1,21 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/providers/club_provider.dart';
+import '../../../core/providers/margin_note_provider.dart';
 
-class CreateNoteScreen extends StatefulWidget {
+class CreateNoteScreen extends ConsumerStatefulWidget {
   final String clubId;
 
   const CreateNoteScreen({super.key, required this.clubId});
 
   @override
-  State<CreateNoteScreen> createState() => _CreateNoteScreenState();
+  ConsumerState<CreateNoteScreen> createState() => _CreateNoteScreenState();
 }
 
-class _CreateNoteScreenState extends State<CreateNoteScreen> {
+class _CreateNoteScreenState extends ConsumerState<CreateNoteScreen> {
   final _pageController = TextEditingController();
   final _noteController = TextEditingController();
   final _quoteController = TextEditingController();
   String _visibility = 'club';
+  bool _saving = false;
 
   @override
   void dispose() {
@@ -25,6 +30,47 @@ class _CreateNoteScreenState extends State<CreateNoteScreen> {
     super.dispose();
   }
 
+  Future<void> _save() async {
+    final noteText = _noteController.text.trim();
+    if (noteText.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please write a note')),
+      );
+      return;
+    }
+
+    final book = await ref.read(currentBookProvider(widget.clubId).future);
+    if (book == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No current book selected')),
+        );
+      }
+      return;
+    }
+
+    setState(() => _saving = true);
+
+    await ref.read(marginNoteNotifierProvider.notifier).createNote(
+          clubId: widget.clubId,
+          bookId: book.id,
+          noteText: noteText,
+          quoteText: _quoteController.text.trim().isNotEmpty
+              ? _quoteController.text.trim()
+              : null,
+          pageNumber: int.tryParse(_pageController.text.trim()),
+          visibility: _visibility,
+        );
+
+    if (mounted) {
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Note posted!')),
+      );
+      context.pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -32,10 +78,14 @@ class _CreateNoteScreenState extends State<CreateNoteScreen> {
         title: const Text('Leave a Note'),
         actions: [
           TextButton(
-            onPressed: () {
-              // TODO: Save margin note to Firestore
-            },
-            child: const Text('Post'),
+            onPressed: _saving ? null : _save,
+            child: _saving
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Post'),
           ),
         ],
       ),

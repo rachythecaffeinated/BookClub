@@ -3,11 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/route_names.dart';
+import 'package:intl/intl.dart';
+
 import '../../../core/models/book.dart';
-import '../../../core/models/book_pick.dart';
+import '../../../core/models/club_meeting.dart';
 import '../../../core/models/reading_progress.dart';
 import '../../../core/providers/book_pick_provider.dart';
 import '../../../core/providers/club_provider.dart';
+import '../../../core/providers/meeting_provider.dart';
 import '../../../core/providers/progress_provider.dart';
 
 void _showAddBookOptions(BuildContext context, String clubId) {
@@ -95,36 +98,8 @@ class ClubHomeScreen extends ConsumerWidget {
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              // Meeting card placeholder
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Next Meeting',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              color: Colors.grey[600],
-                            ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'No meetings scheduled',
-                        style: TextStyle(color: Colors.grey[500]),
-                      ),
-                      const SizedBox(height: 8),
-                      OutlinedButton(
-                        onPressed: () => context.pushNamed(
-                          RouteNames.scheduleMeeting,
-                          pathParameters: {'clubId': clubId},
-                        ),
-                        child: const Text('Schedule Meeting'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              // Next meeting card
+              _NextMeetingCard(clubId: clubId),
               const SizedBox(height: 16),
 
               // Book Pick
@@ -545,6 +520,101 @@ class _BookPickCard extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _NextMeetingCard extends ConsumerWidget {
+  final String clubId;
+
+  const _NextMeetingCard({required this.clubId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final meetingAsync = ref.watch(nextMeetingProvider(clubId));
+
+    return meetingAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (meeting) {
+        if (meeting == null) {
+          return Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Icon(Icons.event_busy, size: 40, color: Colors.grey[400]),
+                  const SizedBox(height: 8),
+                  const Text('No upcoming meetings'),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () => context.pushNamed(
+                      RouteNames.scheduleMeeting,
+                      pathParameters: {'clubId': clubId},
+                    ),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Schedule Meeting'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        final dateStr = DateFormat.MMMEd().add_jm().format(meeting.startsAt);
+        final typeIcon = switch (meeting.meetingType) {
+          MeetingType.virtual => Icons.videocam,
+          MeetingType.hybrid => Icons.groups,
+          MeetingType.inPerson => Icons.place,
+        };
+
+        return Card(
+          child: InkWell(
+            onTap: () => context.pushNamed(
+              RouteNames.meetingDetail,
+              pathParameters: {
+                'clubId': clubId,
+                'meetingId': meeting.id,
+              },
+            ),
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Icon(typeIcon,
+                      size: 32,
+                      color: Theme.of(context).colorScheme.primary),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          meeting.title,
+                          style:
+                              Theme.of(context).textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          dateStr,
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Colors.grey[600],
+                                  ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

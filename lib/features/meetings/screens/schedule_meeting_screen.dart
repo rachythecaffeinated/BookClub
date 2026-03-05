@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/providers/meeting_provider.dart';
 
-class ScheduleMeetingScreen extends StatefulWidget {
+class ScheduleMeetingScreen extends ConsumerStatefulWidget {
   final String clubId;
 
   const ScheduleMeetingScreen({super.key, required this.clubId});
 
   @override
-  State<ScheduleMeetingScreen> createState() => _ScheduleMeetingScreenState();
+  ConsumerState<ScheduleMeetingScreen> createState() =>
+      _ScheduleMeetingScreenState();
 }
 
-class _ScheduleMeetingScreenState extends State<ScheduleMeetingScreen> {
+class _ScheduleMeetingScreenState
+    extends ConsumerState<ScheduleMeetingScreen> {
   final _titleController = TextEditingController();
   final _notesController = TextEditingController();
   final _locationController = TextEditingController();
@@ -20,6 +25,7 @@ class _ScheduleMeetingScreenState extends State<ScheduleMeetingScreen> {
   DateTime _selectedDate = DateTime.now().add(const Duration(days: 7));
   TimeOfDay _selectedTime = const TimeOfDay(hour: 15, minute: 0);
   int _durationMinutes = 60;
+  bool _saving = false;
 
   @override
   void dispose() {
@@ -28,6 +34,55 @@ class _ScheduleMeetingScreenState extends State<ScheduleMeetingScreen> {
     _locationController.dispose();
     _linkController.dispose();
     super.dispose();
+  }
+
+  Future<void> _save() async {
+    final title = _titleController.text.trim();
+    if (title.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a meeting title')),
+      );
+      return;
+    }
+
+    setState(() => _saving = true);
+
+    final startsAt = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+      _selectedTime.hour,
+      _selectedTime.minute,
+    );
+
+    await ref.read(meetingNotifierProvider.notifier).createMeeting(
+          clubId: widget.clubId,
+          title: title,
+          description: _notesController.text.trim().isNotEmpty
+              ? _notesController.text.trim()
+              : null,
+          meetingType: _meetingType,
+          locationName:
+              (_meetingType == 'in_person' || _meetingType == 'hybrid') &&
+                      _locationController.text.trim().isNotEmpty
+                  ? _locationController.text.trim()
+                  : null,
+          virtualLink:
+              (_meetingType == 'virtual' || _meetingType == 'hybrid') &&
+                      _linkController.text.trim().isNotEmpty
+                  ? _linkController.text.trim()
+                  : null,
+          startsAt: startsAt,
+          durationMinutes: _durationMinutes,
+        );
+
+    if (mounted) {
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Meeting scheduled!')),
+      );
+      context.pop();
+    }
   }
 
   @override
@@ -157,10 +212,14 @@ class _ScheduleMeetingScreenState extends State<ScheduleMeetingScreen> {
           const SizedBox(height: 24),
 
           ElevatedButton(
-            onPressed: () {
-              // TODO: Save meeting to Firestore
-            },
-            child: const Text('Schedule Meeting'),
+            onPressed: _saving ? null : _save,
+            child: _saving
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Schedule Meeting'),
           ),
         ],
       ),

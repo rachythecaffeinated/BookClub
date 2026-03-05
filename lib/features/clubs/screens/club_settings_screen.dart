@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/models/club.dart';
 import '../../../core/providers/club_provider.dart';
 import '../../../core/providers/progress_provider.dart';
 
@@ -80,9 +81,7 @@ class ClubSettingsScreen extends ConsumerWidget {
                 leading: const Icon(Icons.edit),
                 title: const Text('Edit Club Name & Description'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  // TODO: Navigate to edit club screen
-                },
+                onTap: () => _showEditClubDialog(context, ref, club),
               ),
               const Divider(),
               ListTile(
@@ -101,9 +100,7 @@ class ClubSettingsScreen extends ConsumerWidget {
                     'Delete Club',
                     style: TextStyle(color: Colors.red[400]),
                   ),
-                  onTap: () {
-                    // TODO: Confirm and delete
-                  },
+                  onTap: () => _confirmDeleteClub(context, ref),
                 ),
               ],
             ],
@@ -193,6 +190,92 @@ class ClubSettingsScreen extends ConsumerWidget {
         SnackBar(content: Text('$label updated!')),
       );
     }
+  }
+
+  void _showEditClubDialog(BuildContext context, WidgetRef ref, Club club) {
+    final nameController = TextEditingController(text: club.name);
+    final descController = TextEditingController(text: club.description ?? '');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit Club'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(labelText: 'Club Name'),
+              textCapitalization: TextCapitalization.words,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: descController,
+              decoration: const InputDecoration(labelText: 'Description'),
+              maxLines: 3,
+              textCapitalization: TextCapitalization.sentences,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await ref.read(clubNotifierProvider.notifier).updateClub(
+                    clubId: clubId,
+                    name: nameController.text,
+                    description: descController.text,
+                  );
+              ref.invalidate(clubProvider(clubId));
+              ref.invalidate(userClubsProvider);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Club updated!')),
+                );
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteClub(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Club?'),
+        content: const Text(
+          'This will permanently delete this club and all its data. '
+          'This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await ref
+                  .read(clubNotifierProvider.notifier)
+                  .deleteClub(clubId: clubId);
+              ref.invalidate(userClubsProvider);
+              if (context.mounted) {
+                context.go('/clubs');
+              }
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _confirmChangeBook(BuildContext context, WidgetRef ref) {

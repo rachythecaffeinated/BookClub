@@ -209,6 +209,7 @@ class ClubNotifier extends StateNotifier<AsyncValue<void>> {
       final bookRef = FirebaseService.clubBooks(clubId).doc();
       final bookData = {
         ...book.toJson(),
+        'source_book_id': book.id,
         'created_at': FieldValue.serverTimestamp(),
       };
       final batch = FirebaseService.firestore.batch();
@@ -298,6 +299,43 @@ class ClubNotifier extends StateNotifier<AsyncValue<void>> {
       await FirebaseService.clubs.doc(clubId).update({
         'background_url': url,
       });
+    });
+  }
+
+  /// Update club name and/or description.
+  Future<void> updateClub({
+    required String clubId,
+    String? name,
+    String? description,
+  }) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      final updates = <String, dynamic>{};
+      if (name != null && name.trim().isNotEmpty) {
+        updates['name'] = name.trim();
+      }
+      if (description != null) {
+        updates['description'] = description.trim();
+      }
+      if (updates.isNotEmpty) {
+        await FirebaseService.clubs.doc(clubId).update(updates);
+      }
+    });
+  }
+
+  /// Delete a club and remove it from the admin's club list.
+  Future<void> deleteClub({required String clubId}) async {
+    final userId = FirebaseService.currentUserId;
+    if (userId == null) return;
+
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      // Remove club ID from user's club_ids array.
+      await FirebaseService.users.doc(userId).update({
+        'club_ids': FieldValue.arrayRemove([clubId]),
+      });
+      // Delete the club document.
+      await FirebaseService.clubs.doc(clubId).delete();
     });
   }
 
