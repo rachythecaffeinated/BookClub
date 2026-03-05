@@ -6,14 +6,34 @@ abstract class AppTheme {
   static const Color primaryLight = Color(0xFF9D97FF);
   static const Color primaryDark = Color(0xFF4A42D4);
   static const Color secondary = Color(0xFFFF6584);
-  static const Color background = Color(0xFFF8F7FF);
+
+  // Surface & background
+  static const Color background = Color(0xFFF5F5FA);
   static const Color surface = Colors.white;
-  static const Color textPrimary = Color(0xFF2D2D3A);
-  static const Color textSecondary = Color(0xFF6B6B80);
+  static const Color darkCard = Color(0xFF1A1A2E);
+  static const Color darkCardLight = Color(0xFF252540);
+
+  // Text
+  static const Color textPrimary = Color(0xFF1A1A2E);
+  static const Color textSecondary = Color(0xFF8E8E9A);
+  static const Color textOnDark = Colors.white;
+
+  // Divider
   static const Color divider = Color(0xFFE8E8F0);
+
+  // Status
   static const Color success = Color(0xFF4CAF50);
   static const Color warning = Color(0xFFFF9800);
   static const Color error = Color(0xFFE53935);
+
+  // Streak heatmap colors (on dark background)
+  static const List<Color> streakColors = [
+    Color(0xFF2A2A45), // 0: no reading (dark, subtle)
+    Color(0xFF3D3A6E), // 1: 1-10 pages
+    Color(0xFF5B55A0), // 2: 11-30 pages
+    Color(0xFF7B73D0), // 3: 31-60 pages
+    Color(0xFF9D97FF), // 4: 60+ pages (bright purple)
+  ];
 
   static ThemeData get lightTheme {
     return ThemeData(
@@ -28,18 +48,19 @@ abstract class AppTheme {
       ),
       scaffoldBackgroundColor: background,
       appBarTheme: const AppBarTheme(
-        backgroundColor: surface,
+        backgroundColor: background,
         foregroundColor: textPrimary,
         elevation: 0,
-        centerTitle: true,
+        scrolledUnderElevation: 0,
+        centerTitle: false,
       ),
       cardTheme: CardThemeData(
         color: surface,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: divider),
         ),
+        margin: EdgeInsets.zero,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -83,7 +104,17 @@ abstract class AppTheme {
         selectedItemColor: primary,
         unselectedItemColor: textSecondary,
         type: BottomNavigationBarType.fixed,
-        elevation: 8,
+        elevation: 0,
+        selectedLabelStyle: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.5,
+        ),
+        unselectedLabelStyle: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w500,
+          letterSpacing: 0.5,
+        ),
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
         backgroundColor: primary,

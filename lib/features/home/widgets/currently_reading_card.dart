@@ -34,205 +34,239 @@ class CurrentlyReadingCard extends ConsumerWidget {
     final booksAsync = ref.watch(personalBooksProvider);
     final clubBooksAsync = ref.watch(clubCurrentBooksProvider);
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Section header
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'Currently Reading',
-              style: Theme.of(context).textTheme.titleMedium,
+            const Text(
+              'ACTIVE SHELF',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.5,
+                color: AppTheme.textSecondary,
+              ),
             ),
-            const SizedBox(height: 12),
-            booksAsync.when(
-              loading: () => const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(8),
-                  child: CircularProgressIndicator(),
+            GestureDetector(
+              onTap: () => context.go('/my-books'),
+              child: const Text(
+                'View All',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.primary,
                 ),
               ),
-              error: (_, __) => const Text('Unable to load books'),
-              data: (books) {
-                final reading = books
-                    .where((b) => b.shelf == Shelf.reading)
-                    .take(2)
-                    .toList();
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        booksAsync.when(
+          loading: () => const Center(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: CircularProgressIndicator(),
+            ),
+          ),
+          error: (_, __) => const Text('Unable to load books'),
+          data: (books) {
+            final reading = books
+                .where((b) => b.shelf == Shelf.reading)
+                .take(2)
+                .toList();
 
-                if (reading.isEmpty) {
-                  return Center(
-                    child: Column(
-                      children: [
-                        Icon(Icons.menu_book,
-                            size: 32, color: Colors.grey[400]),
-                        const SizedBox(height: 8),
-                        Text(
-                          'No books in progress',
-                          style: TextStyle(color: Colors.grey[500]),
+            if (reading.isEmpty) {
+              return Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Center(
+                  child: Column(
+                    children: [
+                      Icon(Icons.menu_book,
+                          size: 40, color: Colors.grey[300]),
+                      const SizedBox(height: 8),
+                      Text(
+                        'No books in progress',
+                        style: TextStyle(color: Colors.grey[500]),
+                      ),
+                      const SizedBox(height: 8),
+                      TextButton(
+                        onPressed: () => context.go('/my-books'),
+                        child: const Text('Start reading a book'),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            // Build merged display objects with club progress data.
+            final clubBooks = clubBooksAsync.valueOrNull ?? [];
+            final displays = reading.map((book) {
+              final clubMatch = clubBooks
+                  .where((cb) =>
+                      cb.sourceBookId == book.bookId ||
+                      cb.book.id == book.bookId)
+                  .firstOrNull;
+
+              final clubProgress = clubMatch?.myProgress;
+              final currentPage =
+                  clubProgress?.currentPage ?? book.currentPage;
+              final percent = clubProgress != null
+                  ? clubProgress.percentComplete
+                  : book.percentComplete;
+              final totalPages = clubMatch?.book.pageCount;
+
+              return _ReadingBookDisplay(
+                title: book.title,
+                author: book.author,
+                coverUrl: book.coverUrl,
+                currentPage: currentPage,
+                totalPages: totalPages,
+                percentComplete: percent,
+              );
+            }).toList();
+
+            return Column(
+              children: displays
+                  .map((display) => _BookCard(display: display))
+                  .toList(),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _BookCard extends StatelessWidget {
+  final _ReadingBookDisplay display;
+
+  const _BookCard({required this.display});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Cover image — larger
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: SizedBox(
+                width: 60,
+                height: 90,
+                child: display.coverUrl != null
+                    ? CachedNetworkImage(
+                        imageUrl: display.coverUrl!,
+                        fit: BoxFit.cover,
+                        placeholder: (_, __) => Container(
+                          color: AppTheme.divider,
+                          child: const Icon(Icons.book, size: 24),
                         ),
-                        const SizedBox(height: 8),
-                        TextButton(
-                          onPressed: () => context.go('/my-books'),
-                          child: const Text('Start reading a book'),
+                        errorWidget: (_, __, ___) => Container(
+                          color: AppTheme.divider,
+                          child: const Icon(Icons.book, size: 24),
                         ),
-                      ],
+                      )
+                    : Container(
+                        color: AppTheme.divider,
+                        child: const Icon(Icons.book, size: 24),
+                      ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            // Title, author, progress
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 4),
+                  Text(
+                    display.title ?? 'Untitled',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      color: AppTheme.textPrimary,
                     ),
-                  );
-                }
-
-                // Build merged display objects with club progress data.
-                final clubBooks = clubBooksAsync.valueOrNull ?? [];
-                final displays = reading.map((book) {
-                  // Try to find matching club progress by book ID.
-                  final clubMatch = clubBooks
-                      .where((cb) =>
-                          cb.sourceBookId == book.bookId ||
-                          cb.book.id == book.bookId)
-                      .firstOrNull;
-
-                  final clubProgress = clubMatch?.myProgress;
-                  final currentPage =
-                      clubProgress?.currentPage ?? book.currentPage;
-                  final percent = clubProgress != null
-                      ? clubProgress.percentComplete
-                      : book.percentComplete;
-                  final totalPages = clubMatch?.book.pageCount;
-
-                  return _ReadingBookDisplay(
-                    title: book.title,
-                    author: book.author,
-                    coverUrl: book.coverUrl,
-                    currentPage: currentPage,
-                    totalPages: totalPages,
-                    percentComplete: percent,
-                  );
-                }).toList();
-
-                return Column(
-                  children: displays
-                      .map((display) => _BookRow(display: display))
-                      .toList(),
-                );
-              },
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (display.author != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      display.author!,
+                      style: const TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 12,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  // Progress bar
+                  Row(
+                    children: [
+                      Text(
+                        '${display.percentComplete.round()}%',
+                        style: const TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: (display.percentComplete / 100.0)
+                                .clamp(0.0, 1.0),
+                            minHeight: 6,
+                            backgroundColor: AppTheme.divider,
+                            valueColor: const AlwaysStoppedAnimation<Color>(
+                                AppTheme.primary),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        _pageDisplay(),
+                        style: const TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
         ),
       ),
     );
   }
-}
-
-class _BookRow extends StatelessWidget {
-  final _ReadingBookDisplay display;
-
-  const _BookRow({required this.display});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Cover image
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: SizedBox(
-              width: 40,
-              height: 60,
-              child: display.coverUrl != null
-                  ? CachedNetworkImage(
-                      imageUrl: display.coverUrl!,
-                      fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(
-                        color: AppTheme.divider,
-                        child: const Icon(Icons.book, size: 20),
-                      ),
-                      errorWidget: (_, __, ___) => Container(
-                        color: AppTheme.divider,
-                        child: const Icon(Icons.book, size: 20),
-                      ),
-                    )
-                  : Container(
-                      color: AppTheme.divider,
-                      child: const Icon(Icons.book, size: 20),
-                    ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          // Title, author, progress
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  display.title ?? 'Untitled',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (display.author != null)
-                  Text(
-                    display.author!,
-                    style: TextStyle(
-                      color: AppTheme.textSecondary,
-                      fontSize: 12,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                if (display.currentPage != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Text(
-                      _pageDisplay(),
-                      style: TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: (display.percentComplete / 100.0)
-                              .clamp(0.0, 1.0),
-                          minHeight: 6,
-                          backgroundColor: AppTheme.divider,
-                          valueColor: const AlwaysStoppedAnimation<Color>(
-                              AppTheme.primary),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${display.percentComplete.round()}%',
-                      style: TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   String _pageDisplay() {
+    if (display.currentPage == null) return '';
     final page = display.currentPage!;
     if (display.totalPages != null && display.totalPages! > 0) {
-      return 'pg. $page of ${display.totalPages}';
+      return '$page / ${display.totalPages} pp';
     }
     return 'pg. $page';
   }
