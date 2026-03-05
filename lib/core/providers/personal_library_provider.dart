@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/book.dart';
 import '../models/club.dart';
 import '../models/personal_book.dart';
+import '../models/reading_progress.dart';
 import '../services/firebase_service.dart';
 import 'club_provider.dart';
 
@@ -137,11 +138,13 @@ class ClubCurrentBook {
   final Club club;
   final Book book;
   final String? sourceBookId;
+  final ReadingProgress? myProgress;
 
   const ClubCurrentBook({
     required this.club,
     required this.book,
     this.sourceBookId,
+    this.myProgress,
   });
 }
 
@@ -163,10 +166,29 @@ final clubCurrentBooksProvider =
         .get();
     final sourceBookId = bookDoc.data()?['source_book_id'] as String?;
 
+    // Fetch current user's reading progress for this club.
+    ReadingProgress? myProgress;
+    final userId = FirebaseService.currentUserId;
+    if (userId != null) {
+      final progressSnap = await FirebaseService.clubProgress(club.id)
+          .where('user_id', isEqualTo: userId)
+          .limit(1)
+          .get();
+      if (progressSnap.docs.isNotEmpty) {
+        myProgress = ReadingProgress.fromJson(
+          FirebaseService.docToJson(
+            progressSnap.docs.first,
+            extra: {'club_id': club.id},
+          ),
+        );
+      }
+    }
+
     results.add(ClubCurrentBook(
       club: club,
       book: book,
       sourceBookId: sourceBookId,
+      myProgress: myProgress,
     ));
   }
 

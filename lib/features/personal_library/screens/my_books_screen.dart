@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/book.dart';
 import '../../../core/models/personal_book.dart';
+import '../../../core/models/reading_progress.dart';
 import '../../../core/providers/personal_library_provider.dart';
 import '../../../core/services/google_books_service.dart';
 
@@ -434,6 +435,15 @@ class _ClubBookTile extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
+                  // Progress bar (from club progress data)
+                  if (clubBook.myProgress != null &&
+                      clubBook.myProgress!.percentComplete > 0) ...[
+                    _ProgressBar(
+                      percent: clubBook.myProgress!.percentComplete,
+                      currentPage: clubBook.myProgress!.currentPage,
+                    ),
+                    const SizedBox(height: 4),
+                  ],
                   // Status tags
                   Wrap(
                     spacing: 6,
@@ -485,6 +495,46 @@ class _StatusChip extends StatelessWidget {
   }
 }
 
+// ── Progress bar ──────────────────────────────────────────────────
+
+class _ProgressBar extends StatelessWidget {
+  final double percent;
+  final int? currentPage;
+
+  const _ProgressBar({required this.percent, this.currentPage});
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = percent.clamp(0.0, 100.0);
+    final label = StringBuffer('${pct.toStringAsFixed(0)}%');
+    if (currentPage != null && currentPage! > 0) {
+      label.write(' · pg. $currentPage');
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: pct / 100,
+            minHeight: 6,
+            backgroundColor: Colors.grey[200],
+            valueColor: AlwaysStoppedAnimation<Color>(
+              Theme.of(context).colorScheme.primary,
+            ),
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label.toString(),
+          style: TextStyle(color: Colors.grey[500], fontSize: 11),
+        ),
+      ],
+    );
+  }
+}
+
 // ── My Library shelf (owned books, split by read/unread) ────────────
 
 class _LibraryShelf extends ConsumerWidget {
@@ -520,6 +570,18 @@ class _LibraryShelf extends ConsumerWidget {
     final read = books.where((b) => b.shelf == Shelf.finished).toList();
     final unread = books.where((b) => b.shelf != Shelf.finished).toList();
 
+    // Get club progress data so we can show it on books being read in clubs.
+    final clubBooks = ref.watch(clubCurrentBooksProvider).valueOrNull ?? [];
+    ClubCurrentBook? findClubBook(PersonalBook pb) {
+      for (final cb in clubBooks) {
+        if (cb.sourceBookId != null && cb.sourceBookId == pb.bookId) return cb;
+        final cbKey = '${cb.book.title}|${cb.book.author}'.toLowerCase();
+        final pbKey = '${pb.title ?? ''}|${pb.author ?? ''}'.toLowerCase();
+        if (cbKey == pbKey && pbKey != '|') return cb;
+      }
+      return null;
+    }
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -528,8 +590,12 @@ class _LibraryShelf extends ConsumerWidget {
             title: 'Unread',
             count: unread.length,
           ),
-          ...unread.map((pb) => _PersonalBookTile(
+          ...unread.map((pb) {
+            final cb = findClubBook(pb);
+            return _PersonalBookTile(
                 personalBook: pb,
+                clubProgress: cb?.myProgress,
+                clubName: cb?.club.name,
                 onMove: (shelf) {
                   ref
                       .read(personalLibraryNotifierProvider.notifier)
@@ -545,7 +611,8 @@ class _LibraryShelf extends ConsumerWidget {
                       .read(personalLibraryNotifierProvider.notifier)
                       .removeBook(personalBookId: pb.id);
                 },
-              )),
+              );
+          }),
         ],
         if (read.isNotEmpty) ...[
           if (unread.isNotEmpty) const SizedBox(height: 16),
@@ -625,12 +692,16 @@ class _SectionHeader extends StatelessWidget {
 
 class _PersonalBookTile extends StatelessWidget {
   final PersonalBook personalBook;
+  final ReadingProgress? clubProgress;
+  final String? clubName;
   final ValueChanged<Shelf> onMove;
   final VoidCallback onToggleOwned;
   final VoidCallback onRemove;
 
   const _PersonalBookTile({
     required this.personalBook,
+    this.clubProgress,
+    this.clubName,
     required this.onMove,
     required this.onToggleOwned,
     required this.onRemove,
@@ -676,10 +747,36 @@ class _PersonalBookTile extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(color: Colors.grey[600], fontSize: 12),
               ),
-            Text(
-              '${personalBook.percentComplete.toStringAsFixed(0)}% complete',
-              style: TextStyle(color: Colors.grey[500], fontSize: 12),
-            ),
+            if (clubProgress != null &&
+                clubProgress!.percentComplete > 0) ...[
+              const SizedBox(height: 4),
+              _ProgressBar(
+                percent: clubProgress!.percentComplete,
+                currentPage: clubProgress!.currentPage,
+              ),
+              if (clubName != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(
+                    'Reading with $clubName',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+            ] else if (personalBook.shelf == Shelf.reading) ...[
+              const SizedBox(height: 4),
+              _ProgressBar(
+                percent: personalBook.percentComplete,
+                currentPage: personalBook.currentPage,
+              ),
+            ] else
+              Text(
+                '${personalBook.percentComplete.toStringAsFixed(0)}% complete',
+                style: TextStyle(color: Colors.grey[500], fontSize: 12),
+              ),
           ],
         ),
         trailing: PopupMenuButton<String>(
