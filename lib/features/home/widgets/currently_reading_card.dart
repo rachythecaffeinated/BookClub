@@ -7,12 +7,32 @@ import '../../../app/theme.dart';
 import '../../../core/models/personal_book.dart';
 import '../../../core/providers/personal_library_provider.dart';
 
+/// Merged view of a currently-reading book with the best available progress.
+class _ReadingBookDisplay {
+  final String? title;
+  final String? author;
+  final String? coverUrl;
+  final int? currentPage;
+  final int? totalPages;
+  final double percentComplete;
+
+  const _ReadingBookDisplay({
+    this.title,
+    this.author,
+    this.coverUrl,
+    this.currentPage,
+    this.totalPages,
+    required this.percentComplete,
+  });
+}
+
 class CurrentlyReadingCard extends ConsumerWidget {
   const CurrentlyReadingCard({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final booksAsync = ref.watch(personalBooksProvider);
+    final clubBooksAsync = ref.watch(clubCurrentBooksProvider);
 
     return Card(
       child: Padding(
@@ -60,9 +80,37 @@ class CurrentlyReadingCard extends ConsumerWidget {
                   );
                 }
 
+                // Build merged display objects with club progress data.
+                final clubBooks = clubBooksAsync.valueOrNull ?? [];
+                final displays = reading.map((book) {
+                  // Try to find matching club progress by book ID.
+                  final clubMatch = clubBooks
+                      .where((cb) =>
+                          cb.sourceBookId == book.bookId ||
+                          cb.book.id == book.bookId)
+                      .firstOrNull;
+
+                  final clubProgress = clubMatch?.myProgress;
+                  final currentPage =
+                      clubProgress?.currentPage ?? book.currentPage;
+                  final percent = clubProgress != null
+                      ? clubProgress.percentComplete
+                      : book.percentComplete;
+                  final totalPages = clubMatch?.book.pageCount;
+
+                  return _ReadingBookDisplay(
+                    title: book.title,
+                    author: book.author,
+                    coverUrl: book.coverUrl,
+                    currentPage: currentPage,
+                    totalPages: totalPages,
+                    percentComplete: percent,
+                  );
+                }).toList();
+
                 return Column(
-                  children: reading
-                      .map((book) => _BookRow(book: book))
+                  children: displays
+                      .map((display) => _BookRow(display: display))
                       .toList(),
                 );
               },
@@ -75,9 +123,9 @@ class CurrentlyReadingCard extends ConsumerWidget {
 }
 
 class _BookRow extends StatelessWidget {
-  final PersonalBook book;
+  final _ReadingBookDisplay display;
 
-  const _BookRow({required this.book});
+  const _BookRow({required this.display});
 
   @override
   Widget build(BuildContext context) {
@@ -92,9 +140,9 @@ class _BookRow extends StatelessWidget {
             child: SizedBox(
               width: 40,
               height: 60,
-              child: book.coverUrl != null
+              child: display.coverUrl != null
                   ? CachedNetworkImage(
-                      imageUrl: book.coverUrl!,
+                      imageUrl: display.coverUrl!,
                       fit: BoxFit.cover,
                       placeholder: (_, __) => Container(
                         color: AppTheme.divider,
@@ -118,7 +166,7 @@ class _BookRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  book.title ?? 'Untitled',
+                  display.title ?? 'Untitled',
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
@@ -126,15 +174,26 @@ class _BookRow extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                if (book.author != null)
+                if (display.author != null)
                   Text(
-                    book.author!,
+                    display.author!,
                     style: TextStyle(
                       color: AppTheme.textSecondary,
                       fontSize: 12,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
+                  ),
+                if (display.currentPage != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      _pageDisplay(),
+                      style: TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
                   ),
                 const SizedBox(height: 8),
                 Row(
@@ -143,7 +202,8 @@ class _BookRow extends StatelessWidget {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(4),
                         child: LinearProgressIndicator(
-                          value: (book.percentComplete / 100.0).clamp(0.0, 1.0),
+                          value: (display.percentComplete / 100.0)
+                              .clamp(0.0, 1.0),
                           minHeight: 6,
                           backgroundColor: AppTheme.divider,
                           valueColor: const AlwaysStoppedAnimation<Color>(
@@ -153,7 +213,7 @@ class _BookRow extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      '${book.percentComplete.round()}%',
+                      '${display.percentComplete.round()}%',
                       style: TextStyle(
                         color: AppTheme.textSecondary,
                         fontSize: 12,
@@ -167,5 +227,13 @@ class _BookRow extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _pageDisplay() {
+    final page = display.currentPage!;
+    if (display.totalPages != null && display.totalPages! > 0) {
+      return 'pg. $page of ${display.totalPages}';
+    }
+    return 'pg. $page';
   }
 }
